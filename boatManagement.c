@@ -170,9 +170,14 @@ int CompareBoats(const void *a, const void *b) {
 void SortInventory() { 
     qsort(boats, boatCount, sizeof(Boat *), CompareBoats); }
 
-int main() {
+int main(int argc, char *argv[]) {
+    // Check for the correct number of command-line arguments
+    if (argc != 2) {
+        printf("Usage: %s <BoatData.csv>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
     // Initialize the system and load boats from the file
-    ReadBoatsFromFile(FILE_NAME);
+    ReadBoatsFromFile(argv[1]);
     printf("\nWelcome to the Boat Management System\n-------------------------------------");
 
     char choice;
