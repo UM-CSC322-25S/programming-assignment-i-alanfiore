@@ -5,7 +5,6 @@
 
 #define MAX_BOATS 120
 #define MAX_NAME_LENGTH 128
-#define FILE_NAME "BoatData.csv"
 
 typedef enum {
     slip,
@@ -28,8 +27,10 @@ typedef struct {
     double amountOwed;
 } Boat;
 
-Boat *boats[MAX_BOATS];
-int boatCount = 0;
+typedef struct {
+    Boat *boats[MAX_BOATS];
+    int boatCount;
+} BoatManager;
 
 // Function to convert string to PlaceType
 PlaceType StringToPlaceType(char *PlaceString) {
@@ -53,21 +54,21 @@ char *PlaceToString(PlaceType Place) {
 }
 
 // Function to read boats from file
-void ReadBoatsFromFile(const char *filename) {
+void ReadBoatsFromFile(BoatManager *manager, const char *filename) {
     FILE *file = fopen(filename, "r");
     if (!file) return;
     
     char line[256];
     while (fgets(line, sizeof(line), file)) {
-        if (boatCount >= MAX_BOATS) break;
-        
+        if (manager->boatCount >= MAX_BOATS) break;
+
         Boat *b = malloc(sizeof(Boat));
         if (!b) exit(EXIT_FAILURE);
-        
+
         char placeStr[16];
         char extra[16];
         sscanf(line, "%127[^,],%d,%15[^,],%15[^,],%lf", b->name, &b->length, placeStr, extra, &b->amountOwed);
-        
+
         b->place = StringToPlaceType(placeStr);
         switch (b->place) {
             case slip: b->location.slipNumber = atoi(extra); break;
@@ -76,17 +77,17 @@ void ReadBoatsFromFile(const char *filename) {
             case storage: b->location.storageNumber = atoi(extra); break;
             default: break;
         }
-        boats[boatCount++] = b;
+        manager->boats[manager->boatCount++] = b;
     }
     fclose(file);
 }
 
 // Function to write boats to file
-void WriteBoatsToFile(const char *filename) {
+void WriteBoatsToFile(BoatManager *manager, const char *filename) {
     FILE *file = fopen(filename, "w");
     if (!file) return;
-    for (int i = 0; i < boatCount; i++) {
-        Boat *b = boats[i];
+    for (int i = 0; i < manager->boatCount; i++) {
+        Boat *b = manager->boats[i];
         fprintf(file, "%s,%d,%s,", b->name, b->length, PlaceToString(b->place));
         switch (b->place) {
             case slip: fprintf(file, "%d", b->location.slipNumber); break;
@@ -101,16 +102,16 @@ void WriteBoatsToFile(const char *filename) {
 }
 
 // Function to add a boat
-void AddBoat(char *csvData) {
-    if (boatCount >= MAX_BOATS) return;
-    
+void AddBoat(BoatManager *manager, char *csvData) {
+    if (manager->boatCount >= MAX_BOATS) return;
+
     Boat *b = malloc(sizeof(Boat));
     if (!b) exit(EXIT_FAILURE);
-    
+
     char placeStr[16];
     char extra[16];
     sscanf(csvData, "%127[^,],%d,%15[^,],%15[^,],%lf", b->name, &b->length, placeStr, extra, &b->amountOwed);
-    
+
     b->place = StringToPlaceType(placeStr);
     switch (b->place) {
         case slip: b->location.slipNumber = atoi(extra); break;
@@ -119,19 +120,19 @@ void AddBoat(char *csvData) {
         case storage: b->location.storageNumber = atoi(extra); break;
         default: break;
     }
-    
-    boats[boatCount++] = b;
+
+    manager->boats[manager->boatCount++] = b;
 }
 
 // Function to remove a boat
-void RemoveBoat(char *name) {
-    for (int i = 0; i < boatCount; i++) {
-        if (!strcasecmp(boats[i]->name, name)) {
-            free(boats[i]);
-            for (int j = i; j < boatCount - 1; j++) {
-                boats[j] = boats[j + 1];
+void RemoveBoat(BoatManager *manager, char *name) {
+    for (int i = 0; i < manager->boatCount; i++) {
+        if (!strcasecmp(manager->boats[i]->name, name)) {
+            free(manager->boats[i]);
+            for (int j = i; j < manager->boatCount - 1; j++) {
+                manager->boats[j] = manager->boats[j + 1];
             }
-            boatCount--;
+            manager->boatCount--;
             return;
         }
     }
@@ -139,20 +140,20 @@ void RemoveBoat(char *name) {
 }
 
 // Function to apply monthly charges
-void ApplyMonthlyCharges() {
-    for (int i = 0; i < boatCount; i++) {
-        switch (boats[i]->place) {
+void ApplyMonthlyCharges(BoatManager *manager) {
+    for (int i = 0; i < manager->boatCount; i++) {
+        switch (manager->boats[i]->place) {
             case slip:
-                boats[i]->amountOwed += boats[i]->length * 12.50;
+                manager->boats[i]->amountOwed += manager->boats[i]->length * 12.50;
                 break;
             case land:
-                boats[i]->amountOwed += boats[i]->length * 14.00;
+                manager->boats[i]->amountOwed += manager->boats[i]->length * 14.00;
                 break;
             case trailor:
-                boats[i]->amountOwed += boats[i]->length * 25.00;
+                manager->boats[i]->amountOwed += manager->boats[i]->length * 25.00;
                 break;
             case storage:
-                boats[i]->amountOwed += boats[i]->length * 11.20;
+                manager->boats[i]->amountOwed += manager->boats[i]->length * 11.20;
                 break;
             default:
                 break;
@@ -161,14 +162,17 @@ void ApplyMonthlyCharges() {
 }
 
 // Function to sort boats alphabetically
-int CompareBoats(const void *a, const void *b) {
-    Boat *boatA = *(Boat **)a;
-    Boat *boatB = *(Boat **)b;
-    return strcasecmp(boatA->name, boatB->name);
+void SortInventory(BoatManager *manager) {
+    for (int i = 0; i < manager->boatCount - 1; i++) {
+        for (int j = 0; j < manager->boatCount - i - 1; j++) {
+            if (strcasecmp(manager->boats[j]->name, manager->boats[j + 1]->name) > 0) {
+                Boat *temp = manager->boats[j];
+                manager->boats[j] = manager->boats[j + 1];
+                manager->boats[j + 1] = temp;
+            }
+        }
+    }
 }
-
-void SortInventory() { 
-    qsort(boats, boatCount, sizeof(Boat *), CompareBoats); }
 
 int main(int argc, char *argv[]) {
     // Check for the correct number of command-line arguments
@@ -176,8 +180,12 @@ int main(int argc, char *argv[]) {
         printf("Usage: %s <BoatData.csv>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
-    // Initialize the system and load boats from the file
-    ReadBoatsFromFile(argv[1]);
+
+    // Initialize BoatManager
+    BoatManager manager = { .boatCount = 0 };
+
+    // Load boats from file
+    ReadBoatsFromFile(&manager, argv[1]);
     printf("\nWelcome to the Boat Management System\n-------------------------------------");
 
     char choice;
@@ -188,12 +196,12 @@ int main(int argc, char *argv[]) {
         choice = tolower(choice);
 
         switch (choice) {
-            case 'i':
+            case 'i': {
                 // Display inventory
-                SortInventory();
+                SortInventory(&manager);
                 printf("\nBoat Inventory:\n");
-                for (int i = 0; i < boatCount; i++) {
-                    Boat *b = boats[i];
+                for (int i = 0; i < manager.boatCount; i++) {
+                    Boat *b = manager.boats[i];
                     printf("%-20s %3d' %-8s", b->name, b->length, PlaceToString(b->place));
                     switch (b->place) {
                         case slip: printf("  # %2d", b->location.slipNumber); break;
@@ -205,6 +213,7 @@ int main(int argc, char *argv[]) {
                     printf("   Owes $%.2f\n", b->amountOwed);
                 }
                 break;
+            }
             case 'a': {
                 // Add a new boat
                 char csvData[256];
@@ -212,7 +221,7 @@ int main(int argc, char *argv[]) {
                 getchar(); // Clear newline character
                 fgets(csvData, sizeof(csvData), stdin);
                 csvData[strcspn(csvData, "\n")] = 0; // Remove newline
-                AddBoat(csvData);
+                AddBoat(&manager, csvData);
                 break;
             }
             case 'r': {
@@ -222,7 +231,7 @@ int main(int argc, char *argv[]) {
                 getchar(); // Clear newline character
                 fgets(name, sizeof(name), stdin);
                 name[strcspn(name, "\n")] = 0; // Remove newline
-                RemoveBoat(name);
+                RemoveBoat(&manager, name);
                 break;
             }
             case 'p': {
@@ -233,17 +242,17 @@ int main(int argc, char *argv[]) {
                 getchar(); // Clear newline character
                 fgets(name, sizeof(name), stdin);
                 name[strcspn(name, "\n")] = 0; // Remove newline
-                
+
                 int found = 0;
-                for (int i = 0; i < boatCount; i++) {
-                    if (!strcasecmp(boats[i]->name, name)) {
+                for (int i = 0; i < manager.boatCount; i++) {
+                    if (!strcasecmp(manager.boats[i]->name, name)) {
                         found = 1;
                         printf("Please enter the amount to be paid: ");
                         scanf("%lf", &payment);
-                        if (payment > boats[i]->amountOwed) {
-                            printf("That is more than the amount owed, $%.2f\n", boats[i]->amountOwed);
+                        if (payment > manager.boats[i]->amountOwed) {
+                            printf("That is more than the amount owed, $%.2f\n", manager.boats[i]->amountOwed);
                         } else {
-                            boats[i]->amountOwed -= payment;
+                            manager.boats[i]->amountOwed -= payment;
                         }
                         break;
                     }
@@ -255,11 +264,11 @@ int main(int argc, char *argv[]) {
             }
             case 'm':
                 // Apply monthly charges
-                ApplyMonthlyCharges();
+                ApplyMonthlyCharges(&manager);
                 break;
             case 'x':
                 // Exit and save data to file
-                WriteBoatsToFile(FILE_NAME);
+                WriteBoatsToFile(&manager, argv[1]);
                 printf("Exiting the Boat Management System...\n");
                 break;
             default:
@@ -269,8 +278,9 @@ int main(int argc, char *argv[]) {
     } while (choice != 'x');
 
     // Free allocated memory
-    for (int i = 0; i < boatCount; i++) {
-        free(boats[i]);
+    for (int i = 0; i < manager.boatCount; i++) {
+        free(manager.boats[i]);
     }
+
     return 0;
 }
