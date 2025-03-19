@@ -167,17 +167,13 @@ int CompareBoats(const void *a, const void *b) {
     return strcasecmp(boatA->name, boatB->name);
 }
 
-void SortInventory() {
-    qsort(boats, boatCount, sizeof(Boat *), CompareBoats);
-}
-
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+void SortInventory() { 
+    qsort(boats, boatCount, sizeof(Boat *), CompareBoats); }
 
 int main() {
     // Initialize the system and load boats from the file
     ReadBoatsFromFile(FILE_NAME);
+    printf("\nWelcome to the Boat Management System\n-------------------------------------");
 
     char choice;
     do {
