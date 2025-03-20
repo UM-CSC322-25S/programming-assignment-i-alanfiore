@@ -8,34 +8,38 @@
 
 /* Enumeration to represent different storage locations for boats */
 typedef enum {
-    slip,
-    land,
-    trailor,
-    storage,
-    no_place
+    slip,       // Boat is stored in a slip
+    land,       // Boat is stored on land
+    trailor,    // Boat is stored on a trailer
+    storage,    // Boat is stored in a storage unit
+    no_place    // No storage place assigned
 } PlaceType;
 
 /* Structure to hold boat details, including its location and outstanding charges */
 typedef struct {
-    char name[MAX_NAME_LENGTH];
-    int length;
-    PlaceType place;
+    char name[MAX_NAME_LENGTH];   // Name of the boat
+    int length;                   // Length of the boat in feet
+    PlaceType place;              // Storage location type
     union {
-        int slipNumber;
-        char bayLetter;
-        char trailerTag[16];
-        int storageNumber;
-    } location;
-    double amountOwed;
+        int slipNumber;           // Slip number for 'slip' type
+        char bayLetter;           // Bay letter for 'land' type
+        char trailerTag[16];      // Trailer tag for 'trailor' type
+        int storageNumber;        // Storage unit number for 'storage' type
+    } location;                   // Union for location-specific details
+    double amountOwed;            // Amount owed for storage or services
 } Boat;
 
 /* Structure to manage an inventory of boats */
 typedef struct {
-    Boat *boats[MAX_BOATS];
-    int boatCount;
+    Boat *boats[MAX_BOATS];       // Array of pointers to boats
+    int boatCount;                // Current count of boats in inventory
 } BoatManager;
 
-/* Function to convert a string to the corresponding PlaceType enum */
+///////////////////////////////////////////////////////////////////////////////////////  
+/// @brief Converts a string to the corresponding PlaceType enum.
+/// @param PlaceString The string representation of the storage location.
+/// @return The corresponding PlaceType enum or no_place if invalid.
+///////////////////////////////////////////////////////////////////////////////////////  
 PlaceType StringToPlaceType(char *PlaceString) {
     if (!strcasecmp(PlaceString, "slip")) return slip;
     if (!strcasecmp(PlaceString, "land")) return land;
@@ -44,7 +48,11 @@ PlaceType StringToPlaceType(char *PlaceString) {
     return no_place;
 }
 
-/* Function to convert a PlaceType enum to its corresponding string representation */
+///////////////////////////////////////////////////////////////////////////////////////  
+/// @brief Converts a PlaceType enum to its string representation.
+/// @param Place The PlaceType enum.
+/// @return The string representation of the PlaceType.
+///////////////////////////////////////////////////////////////////////////////////////  
 char *PlaceToString(PlaceType Place) {
     switch (Place) {
         case slip: return "slip";
@@ -56,7 +64,13 @@ char *PlaceToString(PlaceType Place) {
     }
 }
 
-/* Function to read boat details from a CSV file and populate the BoatManager */
+///////////////////////////////////////////////////////////////////////////////////////  
+/// @brief Reads boat details from a CSV file and populates the BoatManager structure.
+/// @param manager Pointer to the BoatManager structure.
+/// @param filename The name of the CSV file containing boat data.
+/// @details This function parses the file line by line, dynamically allocates memory
+///          for each boat, and updates the inventory.
+///////////////////////////////////////////////////////////////////////////////////////  
 void ReadBoatsFromFile(BoatManager *manager, const char *filename) {
     FILE *file = fopen(filename, "r");
     if (!file) {
@@ -88,7 +102,12 @@ void ReadBoatsFromFile(BoatManager *manager, const char *filename) {
     fclose(file);
 }
 
-/* Function to write boat details to a CSV file */
+///////////////////////////////////////////////////////////////////////////////////////  
+/// @brief Writes boat details from the BoatManager structure to a CSV file.
+/// @param manager Pointer to the BoatManager structure.
+/// @param filename The name of the CSV file to write to.
+/// @details This function writes the boat inventory line by line to the specified file.
+///////////////////////////////////////////////////////////////////////////////////////  
 void WriteBoatsToFile(BoatManager *manager, const char *filename) {
     FILE *file = fopen(filename, "w");
     if (!file) {
@@ -110,7 +129,13 @@ void WriteBoatsToFile(BoatManager *manager, const char *filename) {
     fclose(file);
 }
 
-/* Function to add a boat using CSV input format */
+///////////////////////////////////////////////////////////////////////////////////////  
+/// @brief Adds a boat to the inventory using CSV input format.
+/// @param manager Pointer to the BoatManager structure.
+/// @param csvData Input data in CSV format (Name,Length,Place,Extra,AmountOwed).
+/// @details Dynamically allocates memory for the new boat, validates input, and adds
+///          the boat to the inventory if all checks pass.
+///////////////////////////////////////////////////////////////////////////////////////  
 void AddBoat(BoatManager *manager, char *csvData) {
     if (manager->boatCount >= MAX_BOATS) {
         printf("Error: Maximum number of boats reached.\n");
@@ -168,7 +193,13 @@ void AddBoat(BoatManager *manager, char *csvData) {
 }
 
 
-/* Function to remove a boat by name */
+///////////////////////////////////////////////////////////////////////////////////////  
+/// @brief Removes a boat from the inventory by name.
+/// @param manager Pointer to the BoatManager structure.
+/// @param name The name of the boat to be removed.
+/// @details Searches for the boat by name (case-insensitive) and removes it from the
+///          inventory. Frees allocated memory.
+///////////////////////////////////////////////////////////////////////////////////////  
 void RemoveBoat(BoatManager *manager, char *name) {
     for (int i = 0; i < manager->boatCount; i++) {
         if (!strcasecmp(manager->boats[i]->name, name)) {
@@ -183,7 +214,11 @@ void RemoveBoat(BoatManager *manager, char *name) {
     printf("No boat with that name\n");
 }
 
-/* Function to apply monthly storage charges based on boat type and length */
+///////////////////////////////////////////////////////////////////////////////////////  
+/// @brief Applies monthly storage charges to all boats in the inventory.
+/// @param manager Pointer to the BoatManager structure.
+/// @details Charges are calculated based on boat type and size.
+///////////////////////////////////////////////////////////////////////////////////////  
 void ApplyMonthlyCharges(BoatManager *manager) {
     for (int i = 0; i < manager->boatCount; i++) {
         switch (manager->boats[i]->place) {
@@ -205,6 +240,12 @@ void ApplyMonthlyCharges(BoatManager *manager) {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////  
+/// @brief Comparator function for sorting boats alphabetically by name.
+/// @param a Pointer to the first boat.
+/// @param b Pointer to the second boat.
+/// @return Negative if a < b, 0 if a == b, Positive if a > b (case-insensitive).
+///////////////////////////////////////////////////////////////////////////////////////  
 int CompareBoats(const void *a, const void *b) {
     // Cast `a` and `b` as pointers to `Boat`
     Boat *boatA = *(Boat **)a;
@@ -214,12 +255,23 @@ int CompareBoats(const void *a, const void *b) {
     return strcasecmp(boatA->name, boatB->name);
 }
 
+///////////////////////////////////////////////////////////////////////////////////////  
+/// @brief Sorts the boat inventory alphabetically by name.
+/// @param manager Pointer to the BoatManager structure.
+/// @details Uses qsort with CompareBoats to sort boats.
+///////////////////////////////////////////////////////////////////////////////////////  
 void SortInventory(BoatManager *manager) {
     // Use `qsort` to sort boats alphabetically by name
     qsort(manager->boats, manager->boatCount, sizeof(Boat *), CompareBoats);
 }
 
-/* Main function to run the program */
+///////////////////////////////////////////////////////////////////////////////////////  
+/// @brief Main function to run the Boat Management System.
+/// @param argc Number of command-line arguments.
+/// @param argv Array of command-line argument strings.
+/// @return Exit status of the program (0 for success, non-zero for error).
+/// @details Handles user input and provides menu options for interacting with the system.
+///////////////////////////////////////////////////////////////////////////////////////  
 int main(int argc, char *argv[]) {
     if (argc != 2) {
         printf("Usage: %s <BoatData.csv>\n", argv[0]);
