@@ -112,26 +112,61 @@ void WriteBoatsToFile(BoatManager *manager, const char *filename) {
 
 /* Function to add a boat using CSV input format */
 void AddBoat(BoatManager *manager, char *csvData) {
-    if (manager->boatCount >= MAX_BOATS) return;
+    if (manager->boatCount >= MAX_BOATS) {
+        printf("Error: Maximum number of boats reached.\n");
+        return;
+    }
 
     Boat *b = malloc(sizeof(Boat));
-    if (!b) exit(EXIT_FAILURE);
+    if (!b) {
+        printf("Error: Memory allocation failed.\n");
+        exit(EXIT_FAILURE);
+    }
 
     char placeStr[16];
     char extra[16];
-    sscanf(csvData, "%127[^,],%d,%15[^,],%15[^,],%lf", b->name, &b->length, placeStr, extra, &b->amountOwed);
+    int parsedFields = sscanf(csvData, "%127[^,],%d,%15[^,],%15[^,],%lf",
+                               b->name, &b->length, placeStr, extra, &b->amountOwed);
+
+    // Validate the number of fields parsed
+    if (parsedFields != 5 || strlen(b->name) == 0 || b->length <= 0 || b->amountOwed < 0) {
+        printf("Error: Invalid input format. Please enter data in the format:\n");
+        printf("Name,Length,Place,Extra,AmountOwed\n");
+        free(b);
+        return;
+    }
 
     b->place = StringToPlaceType(placeStr);
     switch (b->place) {
-        case slip: b->location.slipNumber = atoi(extra); break;
-        case land: b->location.bayLetter = extra[0]; break;
-        case trailor: strncpy(b->location.trailerTag, extra, 15); break;
-        case storage: b->location.storageNumber = atoi(extra); break;
-        default: break;
+        case slip:
+            b->location.slipNumber = atoi(extra);
+            break;
+        case land:
+            if (strlen(extra) == 1 && isalpha(extra[0])) {
+                b->location.bayLetter = extra[0];
+            } else {
+                printf("Error: Invalid bay letter for 'land'.\n");
+                free(b);
+                return;
+            }
+            break;
+        case trailor:
+            strncpy(b->location.trailerTag, extra, sizeof(b->location.trailerTag) - 1);
+            b->location.trailerTag[sizeof(b->location.trailerTag) - 1] = '\0';
+            break;
+        case storage:
+            b->location.storageNumber = atoi(extra);
+            break;
+        default:
+            printf("Error: Invalid place type.\n");
+            free(b);
+            return;
     }
 
+    // Add the boat to the inventory
     manager->boats[manager->boatCount++] = b;
 }
+
 
 /* Function to remove a boat by name */
 void RemoveBoat(BoatManager *manager, char *name) {
