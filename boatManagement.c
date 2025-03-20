@@ -181,14 +181,6 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    // Validate the file
-    FILE *file = fopen(argv[1], "r");
-    if (!file) {
-        printf("Error: Unable to open file '%s'. Please ensure the file exists and try again.\n", argv[1]);
-        exit(EXIT_FAILURE);
-    }
-    fclose(file);
-
     // Initialize BoatManager
     BoatManager manager = { .boatCount = 0 };
 
@@ -200,15 +192,9 @@ int main(int argc, char *argv[]) {
     do {
         // Display menu
         printf("\n(I)nventory, (A)dd, (R)emove, (P)ayment, (M)onth, e(X)it: ");
-        if (scanf(" %c", &choice) != 1) { 
-            // Handle invalid input that is not a char
-            printf("Invalid input. Please enter a valid option.\n");
-            // Clear the input buffer
-            while (getchar() != '\n');
-            continue;
-        }
-
+        scanf(" %c", &choice);
         choice = tolower(choice);
+
         switch (choice) {
             case 'i': {
                 // Display inventory
@@ -262,11 +248,7 @@ int main(int argc, char *argv[]) {
                     if (!strcasecmp(manager.boats[i]->name, name)) {
                         found = 1;
                         printf("Please enter the amount to be paid: ");
-                        if (scanf("%lf", &payment) != 1) {
-                            printf("Invalid input. Please enter a valid number for payment.\n");
-                            while (getchar() != '\n'); // Clear buffer
-                            break;
-                        }
+                        scanf("%lf", &payment);
                         if (payment > manager.boats[i]->amountOwed) {
                             printf("That is more than the amount owed, $%.2f\n", manager.boats[i]->amountOwed);
                         } else {
@@ -290,7 +272,7 @@ int main(int argc, char *argv[]) {
                 printf("Exiting the Boat Management System...\n");
                 break;
             default:
-                printf("Invalid option '%c'. Please try again.\n", choice);
+                printf("Invalid option %c\n", choice);
                 break;
         }
     } while (choice != 'x');
