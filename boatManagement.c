@@ -6,6 +6,7 @@
 #define MAX_BOATS 120
 #define MAX_NAME_LENGTH 128
 
+/* Enumeration to represent different storage locations for boats */
 typedef enum {
     slip,
     land,
@@ -14,6 +15,7 @@ typedef enum {
     no_place
 } PlaceType;
 
+/* Structure to hold boat details, including its location and outstanding charges */
 typedef struct {
     char name[MAX_NAME_LENGTH];
     int length;
@@ -27,12 +29,13 @@ typedef struct {
     double amountOwed;
 } Boat;
 
+/* Structure to manage an inventory of boats */
 typedef struct {
     Boat *boats[MAX_BOATS];
     int boatCount;
 } BoatManager;
 
-// Function to convert string to PlaceType
+/* Function to convert a string to the corresponding PlaceType enum */
 PlaceType StringToPlaceType(char *PlaceString) {
     if (!strcasecmp(PlaceString, "slip")) return slip;
     if (!strcasecmp(PlaceString, "land")) return land;
@@ -41,7 +44,7 @@ PlaceType StringToPlaceType(char *PlaceString) {
     return no_place;
 }
 
-// Function to convert PlaceType to string
+/* Function to convert a PlaceType enum to its corresponding string representation */
 char *PlaceToString(PlaceType Place) {
     switch (Place) {
         case slip: return "slip";
@@ -53,11 +56,14 @@ char *PlaceToString(PlaceType Place) {
     }
 }
 
-// Function to read boats from file
+/* Function to read boat details from a CSV file and populate the BoatManager */
 void ReadBoatsFromFile(BoatManager *manager, const char *filename) {
     FILE *file = fopen(filename, "r");
-    if (!file) return;
-    
+    if (!file) {
+        perror("Error opening file for reading");
+        return;
+    }
+
     char line[256];
     while (fgets(line, sizeof(line), file)) {
         if (manager->boatCount >= MAX_BOATS) break;
@@ -82,10 +88,13 @@ void ReadBoatsFromFile(BoatManager *manager, const char *filename) {
     fclose(file);
 }
 
-// Function to write boats to file
+/* Function to write boat details to a CSV file */
 void WriteBoatsToFile(BoatManager *manager, const char *filename) {
     FILE *file = fopen(filename, "w");
-    if (!file) return;
+    if (!file) {
+        perror("Error opening file for writing");
+        return;
+    }
     for (int i = 0; i < manager->boatCount; i++) {
         Boat *b = manager->boats[i];
         fprintf(file, "%s,%d,%s,", b->name, b->length, PlaceToString(b->place));
@@ -101,7 +110,7 @@ void WriteBoatsToFile(BoatManager *manager, const char *filename) {
     fclose(file);
 }
 
-// Function to add a boat
+/* Function to add a boat using CSV input format */
 void AddBoat(BoatManager *manager, char *csvData) {
     if (manager->boatCount >= MAX_BOATS) return;
 
@@ -124,7 +133,7 @@ void AddBoat(BoatManager *manager, char *csvData) {
     manager->boats[manager->boatCount++] = b;
 }
 
-// Function to remove a boat
+/* Function to remove a boat by name */
 void RemoveBoat(BoatManager *manager, char *name) {
     for (int i = 0; i < manager->boatCount; i++) {
         if (!strcasecmp(manager->boats[i]->name, name)) {
@@ -139,7 +148,7 @@ void RemoveBoat(BoatManager *manager, char *name) {
     printf("No boat with that name\n");
 }
 
-// Function to apply monthly charges
+/* Function to apply monthly storage charges based on boat type and length */
 void ApplyMonthlyCharges(BoatManager *manager) {
     for (int i = 0; i < manager->boatCount; i++) {
         switch (manager->boats[i]->place) {
@@ -161,25 +170,34 @@ void ApplyMonthlyCharges(BoatManager *manager) {
     }
 }
 
-// Function to sort boats alphabetically
-void SortInventory(BoatManager *manager) {
-    for (int i = 0; i < manager->boatCount - 1; i++) {
-        for (int j = 0; j < manager->boatCount - i - 1; j++) {
-            if (strcasecmp(manager->boats[j]->name, manager->boats[j + 1]->name) > 0) {
-                Boat *temp = manager->boats[j];
-                manager->boats[j] = manager->boats[j + 1];
-                manager->boats[j + 1] = temp;
-            }
-        }
-    }
+int CompareBoats(const void *a, const void *b) {
+    // Cast `a` and `b` as pointers to `Boat`
+    Boat *boatA = *(Boat **)a;
+    Boat *boatB = *(Boat **)b;
+
+    // Use `strcasecmp` for case-insensitive string comparison
+    return strcasecmp(boatA->name, boatB->name);
 }
 
+void SortInventory(BoatManager *manager) {
+    // Use `qsort` to sort boats alphabetically by name
+    qsort(manager->boats, manager->boatCount, sizeof(Boat *), CompareBoats);
+}
+
+/* Main function to run the program */
 int main(int argc, char *argv[]) {
-    // Check for the correct number of command-line arguments
     if (argc != 2) {
         printf("Usage: %s <BoatData.csv>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
+
+    // Validate the file
+    FILE *file = fopen(argv[1], "r");
+    if (!file) {
+        printf("Error: Unable to open file '%s'. Please ensure the file exists and try again.\n", argv[1]);
+        exit(EXIT_FAILURE);
+    }
+    fclose(file);
 
     // Initialize BoatManager
     BoatManager manager = { .boatCount = 0 };
@@ -199,25 +217,41 @@ int main(int argc, char *argv[]) {
             case 'i': {
                 // Display inventory
                 SortInventory(&manager);
-                printf("\nBoat Inventory:\n");
                 for (int i = 0; i < manager.boatCount; i++) {
                     Boat *b = manager.boats[i];
-                    printf("%-20s %3d' %-8s", b->name, b->length, PlaceToString(b->place));
+
+                    // Print Boat Name, Length, and Place Type
+                    printf("%-20s %4d'    %-8s", b->name, b->length, PlaceToString(b->place));
+
+                    // Add Location-Specific Details
                     switch (b->place) {
-                        case slip: printf("  # %2d", b->location.slipNumber); break;
-                        case land: printf("      %c", b->location.bayLetter); break;
-                        case trailor: printf("  %s", b->location.trailerTag); break;
-                        case storage: printf("   # %2d", b->location.storageNumber); break;
-                        default: break;
+                        case slip:
+                            printf("  # %-6d", b->location.slipNumber); // Slip number formatted
+                            break;
+                        case land:
+                            printf("     %-6c", b->location.bayLetter); // Bay letter formatted
+                            break;
+                        case trailor:
+                            printf("  %-8s", b->location.trailerTag); // Trailer tag formatted
+                            break;
+                        case storage:
+                            printf("  # %-6d", b->location.storageNumber); // Storage number formatted
+                            break;
+                        default:
+                            printf("          "); // Add blank spaces for unknown place
+                            break;
                     }
-                    printf("   Owes $%.2f\n", b->amountOwed);
+                    // Print Amount Owed
+                    printf("   Owes $%7.2f\n", b->amountOwed); // Align and format monetary value
                 }
                 break;
             }
+
+
             case 'a': {
                 // Add a new boat
                 char csvData[256];
-                printf("Please enter the boat data in CSV format: ");
+                printf("Enter boat data (CSV): ");
                 getchar(); // Clear newline character
                 fgets(csvData, sizeof(csvData), stdin);
                 csvData[strcspn(csvData, "\n")] = 0; // Remove newline
@@ -227,10 +261,10 @@ int main(int argc, char *argv[]) {
             case 'r': {
                 // Remove a boat
                 char name[MAX_NAME_LENGTH];
-                printf("Please enter the boat name: ");
-                getchar(); // Clear newline character
+                printf("Enter boat name to remove: ");
+                getchar();
                 fgets(name, sizeof(name), stdin);
-                name[strcspn(name, "\n")] = 0; // Remove newline
+                name[strcspn(name, "\n")] = 0;
                 RemoveBoat(&manager, name);
                 break;
             }
@@ -238,8 +272,8 @@ int main(int argc, char *argv[]) {
                 // Process a payment
                 char name[MAX_NAME_LENGTH];
                 double payment;
-                printf("Please enter the boat name: ");
-                getchar(); // Clear newline character
+                printf("Enter boat name for payment: ");
+                getchar(); //
                 fgets(name, sizeof(name), stdin);
                 name[strcspn(name, "\n")] = 0; // Remove newline
 
@@ -247,12 +281,13 @@ int main(int argc, char *argv[]) {
                 for (int i = 0; i < manager.boatCount; i++) {
                     if (!strcasecmp(manager.boats[i]->name, name)) {
                         found = 1;
-                        printf("Please enter the amount to be paid: ");
+                        printf("Enter payment amount: ");
                         scanf("%lf", &payment);
                         if (payment > manager.boats[i]->amountOwed) {
-                            printf("That is more than the amount owed, $%.2f\n", manager.boats[i]->amountOwed);
+                            printf("That is more than the amount owed, $%.2f. Payment rejected.\n", manager.boats[i]->amountOwed);
                         } else {
                             manager.boats[i]->amountOwed -= payment;
+                            printf("Payment of $%.2f accepted.\n", payment);
                         }
                         break;
                     }
@@ -262,17 +297,20 @@ int main(int argc, char *argv[]) {
                 }
                 break;
             }
-            case 'm':
+            case 'm': {
                 // Apply monthly charges
                 ApplyMonthlyCharges(&manager);
+                printf("Monthly charges applied.\n");
                 break;
-            case 'x':
+            }
+            case 'x': {
                 // Exit and save data to file
                 WriteBoatsToFile(&manager, argv[1]);
                 printf("Exiting the Boat Management System...\n");
                 break;
+            }
             default:
-                printf("Invalid option %c\n", choice);
+                printf("Invalid option '%c'. Try again.\n", choice);
                 break;
         }
     } while (choice != 'x');
